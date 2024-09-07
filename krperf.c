@@ -20,6 +20,7 @@
 #include "krperf.h"
 #include "krperf_srq.h"
 #include "krperf_proc.h"
+#include "krperf_srv.h"
 
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME " L" __stringify(__LINE__) ": file: %s +%d caller: %ps " fmt, __FILE__, __LINE__, __builtin_return_address(0)
@@ -31,13 +32,13 @@ DEFINE_MUTEX(krperf_mutex);
  */
 LIST_HEAD(krperf_cbs);
 
-static int debug = 0;
+int debug = 0;
 module_param(debug, int, 0);
 MODULE_PARM_DESC(debug, "Debug level (0=none, 1=all)");
 #define DEBUG_LOG if (debug) printk
 
 MODULE_AUTHOR("Yanjun.Zhu");
-MODULE_DESCRIPTION("RDMA perf/ping server");
+MODULE_DESCRIPTION("RDMA perf/ping client/server");
 MODULE_LICENSE("Dual BSD/GPL");
 
 static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
@@ -107,28 +108,6 @@ static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
 		wake_up_interruptible(&cb->sem);
 		break;
 	}
-	return 0;
-}
-
-static int server_recv(struct krperf_cb *cb, struct ib_wc *wc)
-{
-	if (wc->byte_len != sizeof(cb->recv_buf)) {
-		pr_err("Received bogus data, size %d\n", wc->byte_len);
-		return -EINVAL;
-	}
-
-	cb->remote_rkey = ntohl(cb->recv_buf.rkey);
-	cb->remote_addr = ntohll(cb->recv_buf.buf);
-	cb->remote_len  = ntohl(cb->recv_buf.size);
-	DEBUG_LOG("Received rkey %x addr %llx len %d from peer\n",
-		  cb->remote_rkey, (unsigned long long)cb->remote_addr, 
-		  cb->remote_len);
-
-	if (cb->state <= KRPERF_CONNECTED || cb->state == RDMA_WRITE_COMPLETE)
-		cb->state = RDMA_READ_ADV;
-	else
-		cb->state = RDMA_WRITE_ADV;
-
 	return 0;
 }
 
@@ -570,7 +549,7 @@ static void krperf_format_send(struct krperf_cb *cb, u64 buf)
 
 	/*
 	 * Client side will do reg or mw bind before
-	 * advertising the rdma buffer.  Server side
+	 * advertising the rdma buffer. Server side
 	 * sends have no data.
 	 */
 	if (!cb->server) {
