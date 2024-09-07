@@ -18,3 +18,4 @@ clean:
 	rm -f rdma_krperf.mod.c rdma_krperf.mod
 	rm -f Module.symvers
 	rm -f Module.markers
+	rm -f modules.order
