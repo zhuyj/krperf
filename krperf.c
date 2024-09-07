@@ -9,17 +9,9 @@
 #include <linux/string.h>
 #include <linux/parser.h>
 #include <linux/proc_fs.h>
-#include <linux/inet.h>
 #include <linux/list.h>
 #include <linux/in.h>
-#include <linux/device.h>
 #include <linux/pci.h>
-#include <linux/ktime.h>
-#include <linux/random.h>
-#include <linux/signal.h>
-
-#include <asm/atomic.h>
-#include <asm/pci.h>
 
 #include <rdma/ib_verbs.h>
 #include <rdma/rdma_cm.h>
