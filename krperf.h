@@ -155,4 +155,5 @@ struct krperf_cb {
 };
 
 int krperf_doit(char *cmd);
+u32 krperf_rdma_rkey(struct krperf_cb *cb, u64 buf, int post_inv);
 #endif /* _KRPERF_H */
