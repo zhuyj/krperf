@@ -7,7 +7,8 @@ rdma_krperf-y			:= krperf_getopt.o \
 							krperf.o \
 							krperf_srq.o \
 							krperf_proc.o \
-							krperf_srv.o
+							krperf_srv.o \
+							krperf_clt.o
 
 default:
 	make -C $(KSRC) M=`pwd` modules

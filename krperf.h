@@ -156,4 +156,7 @@ struct krperf_cb {
 
 int krperf_doit(char *cmd);
 u32 krperf_rdma_rkey(struct krperf_cb *cb, u64 buf, int post_inv);
+int krperf_reg_supported(struct ib_device *dev);
+void krperf_fill_sockaddr(struct sockaddr_storage *sin, struct krperf_cb *cb);
+
 #endif /* _KRPERF_H */
