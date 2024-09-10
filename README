@@ -144,6 +144,7 @@ local_dma_lkey	none		Use the local dma lkey for the source
 				of writes and sends, and in recvs
 read_inv	none		Server will use READ_WITH_INV. Only
 				valid in reg mem_mode.
+srq			none		Enable SRQ (Shared Recv Queue)
 
 ============
 Memory Usage:
