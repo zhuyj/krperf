@@ -568,40 +568,6 @@ void krperf_fill_sockaddr(struct sockaddr_storage *sin, struct krperf_cb *cb)
 	}
 }
 
-static int krperf_bind_server(struct krperf_cb *cb)
-{
-	struct sockaddr_storage sin;
-	int ret;
-
-	krperf_fill_sockaddr(&sin, cb);
-
-	ret = rdma_bind_addr(cb->cm_id, (struct sockaddr *)&sin);
-	if (ret) {
-		pr_err("rdma_bind_addr error %d(%pe)\n", ret, ERR_PTR(ret));
-		return ret;
-	}
-	DEBUG_LOG("rdma_bind_addr successful\n");
-
-	DEBUG_LOG("rdma_listen\n");
-	ret = rdma_listen(cb->cm_id, 3);
-	if (ret) {
-		pr_err("rdma_listen failed: %d(%pe)\n", ret, ERR_PTR(ret));
-		return ret;
-	}
-
-	wait_event_interruptible(cb->sem, cb->state >= CONNECT_REQUEST);
-	if (cb->state != CONNECT_REQUEST) {
-		pr_err("wait for CONNECT_REQUEST state %d\n",
-			cb->state);
-		return -1;
-	}
-
-	if (!krperf_reg_supported(cb->child_cm_id->device))
-		return -EINVAL;
-
-	return 0;
-}
-
 static void krperf_run_server(struct krperf_cb *cb)
 {
 	const struct ib_recv_wr *bad_wr;
