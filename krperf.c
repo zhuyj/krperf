@@ -170,8 +170,8 @@ static void krperf_cq_event_handler(struct ib_cq *cq, void *ctx)
 			DEBUG_LOG("recv completion\n");
 			cb->stats.recv_bytes += sizeof(cb->recv_buf);
 			cb->stats.recv_msgs++;
-			ret = cb->server ? server_recv(cb, &wc) :
-						   client_recv(cb, &wc);
+			ret = cb->server ? krperf_server_recv(cb, &wc) :
+						   krperf_client_recv(cb, &wc);
 			if (ret) {
 				pr_err("recv wc error: %d(%pe)\n", ret, ERR_PTR(ret));
 				goto error;

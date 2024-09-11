@@ -6,7 +6,7 @@
 
 #include "krperf.h"
 
-int client_recv(struct krperf_cb *cb, struct ib_wc *wc);
+int krperf_client_recv(struct krperf_cb *cb, struct ib_wc *wc);
 void krperf_test_client(struct krperf_cb *cb);
 int krperf_connect_client(struct krperf_cb *cb);
 int krperf_bind_client(struct krperf_cb *cb);

@@ -3,7 +3,7 @@
 extern int debug;
 #define DEBUG_LOG if (debug) printk
 
-int client_recv(struct krperf_cb *cb, struct ib_wc *wc)
+int krperf_client_recv(struct krperf_cb *cb, struct ib_wc *wc)
 {
 	if (wc->byte_len != sizeof(cb->recv_buf)) {
 		pr_err("Received bogus data, size %d\n", wc->byte_len);
