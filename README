@@ -87,7 +87,16 @@ connect to this address at port 9999 and issue 100 ping/pong messages.
 This example assumes you have two systems connected via IB and the
 IPoverIB devices are configured on the 192.168.69/24 subnet accordingly.
 
+Currently this krperf can also work on SoftRoCE after the commit
+"RDMA/krperf: Make cq_comp_work work in workqueue".
+
 Server:
+
+If test is on RXE, the following rdma commands need to be done before
+krperf.
+
+# rdma link add rxe0 type rxe netdev eth0
+# rdma link
 
 # modprobe rdma_krperf
 # echo "server,addr=192.168.69.127,port=9999,verbose" >/proc/krperf
@@ -97,6 +106,12 @@ The echo command above will block until the krperf test completes,
 or the user hits ctrl-c.
 
 On the client:
+
+If test is on RXE, the following rdma commands need to be done before
+krperf.
+
+# rdma link add rxe0 type rxe netdev eth0
+# rdma link
 
 # modprobe rdma_krperf
 # echo "client,addr=192.168.69.127,port=9999,count=100,verbose" >/proc/krperf
