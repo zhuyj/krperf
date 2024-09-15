@@ -112,12 +112,9 @@ static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
 	return 0;
 }
 
-static void krperf_cq_event_handler(struct ib_cq *cq, void *ctx)
+static void krperf_cq_comp_handler(struct ib_cq *cq, void *ctx)
 {
 	struct krperf_cb *cb = ctx;
-	struct ib_wc wc;
-	const struct ib_recv_wr *bad_wr;
-	int ret;
 
 	BUG_ON(cb->cq != cq);
 	if (cb->state == KRPERF_ERROR) {
@@ -128,8 +125,20 @@ static void krperf_cq_event_handler(struct ib_cq *cq, void *ctx)
 		pr_err("cq completion event in frtest!\n");
 		return;
 	}
+	schedule_work(&cb->ib_cq_comp_work);
+}
 
-	schedule_work(&cb->ib_req_notify_cq_work);
+static void krperf_cq_comp_work(struct work_struct *work)
+{
+	struct ib_wc wc;
+	const struct ib_recv_wr *bad_wr;
+	int ret;
+	struct krperf_cb *cb = container_of(work,
+					 struct krperf_cb,
+					 ib_cq_comp_work);
+
+
+	ib_req_notify_cq(cb->cq, IB_CQ_NEXT_COMP);
 	while ((ret = ib_poll_cq(cb->cq, 1, &wc)) == 1) {
 		if (wc.status) {
 			if (wc.status == IB_WC_WR_FLUSH_ERR) {
@@ -199,15 +208,6 @@ static void krperf_cq_event_handler(struct ib_cq *cq, void *ctx)
 error:
 	cb->state = KRPERF_ERROR;
 	wake_up_interruptible(&cb->sem);
-}
-
-static void krperf_ib_req_notify_cq_handler(struct work_struct *work)
-{
-	struct krperf_cb *cb_work = container_of(work,
-						 struct krperf_cb,
-						 ib_req_notify_cq_work);
-
-	ib_req_notify_cq(cb_work->cq, IB_CQ_NEXT_COMP);
 }
 
 static int krperf_accept(struct krperf_cb *cb)
@@ -435,7 +435,7 @@ static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 
 	attr.cqe = cb->txdepth * 2;
 	attr.comp_vector = 0;
-	cb->cq = ib_create_cq(cm_id->device, krperf_cq_event_handler, NULL,
+	cb->cq = ib_create_cq(cm_id->device, krperf_cq_comp_handler, NULL,
 			      cb, &attr);
 	if (IS_ERR(cb->cq)) {
 		pr_err("ib_create_cq failed\n");
@@ -861,8 +861,8 @@ int krperf_doit(char *cmd)
 	}
 	DEBUG_LOG("created cm_id %p\n", cb->cm_id);
 
-	/* Add ib_req_notify_cq workqueue handler */
-	INIT_WORK(&cb->ib_req_notify_cq_work, krperf_ib_req_notify_cq_handler);
+	/* Add cq comp workqueue handler */
+	INIT_WORK(&cb->ib_cq_comp_work, krperf_cq_comp_work);
 
 	if (cb->server)
 		krperf_run_server(cb);
