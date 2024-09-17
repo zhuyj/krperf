@@ -274,6 +274,7 @@ static void krperf_setup_wr(struct krperf_cb *cb)
 
 static int krperf_setup_buffers(struct krperf_cb *cb)
 {
+	enum ib_mr_type mr_type;
 	int ret;
 
 	DEBUG_LOG(PFX "krperf_setup_buffers called on cb %p\n", cb);
@@ -299,8 +300,13 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 	dma_unmap_addr_set(cb, rdma_mapping, cb->rdma_dma_addr);
 	cb->page_list_len = (((cb->size - 1) & PAGE_MASK) + PAGE_SIZE)
 				>> PAGE_SHIFT;
-	cb->reg_mr = ib_alloc_mr(cb->pd,  IB_MR_TYPE_MEM_REG,
-				 cb->page_list_len);
+
+	if (cb->ib_dev->attrs.kernel_cap_flags & IBK_SG_GAPS_REG)
+		mr_type = IB_MR_TYPE_SG_GAPS;
+	else
+		mr_type = IB_MR_TYPE_MEM_REG;
+
+	cb->reg_mr = ib_alloc_mr(cb->pd,  mr_type, cb->page_list_len);
 	if (IS_ERR(cb->reg_mr)) {
 		ret = PTR_ERR(cb->reg_mr);
 		DEBUG_LOG(PFX "recv_buf reg_mr failed %d\n", ret);
@@ -685,8 +691,14 @@ static void krperf_fr_test(struct krperf_cb *cb)
 	int count = 0;
 	int scnt = 0;
 	struct scatterlist sg = {0};
+	enum ib_mr_type mr_type;
 
-	mr = ib_alloc_mr(cb->pd, IB_MR_TYPE_MEM_REG, plen);
+	if (cb->ib_dev->attrs.kernel_cap_flags & IBK_SG_GAPS_REG)
+		mr_type = IB_MR_TYPE_SG_GAPS;
+	else
+		mr_type = IB_MR_TYPE_MEM_REG;
+
+	mr = ib_alloc_mr(cb->pd, mr_type, plen);
 	if (IS_ERR(mr)) {
 		pr_err("ib_alloc_mr failed %ld(%pe)\n", PTR_ERR(mr), mr);
 		return;
