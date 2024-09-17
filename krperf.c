@@ -278,19 +278,19 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 
 	DEBUG_LOG(PFX "krperf_setup_buffers called on cb %p\n", cb);
 
-	cb->recv_dma_addr = ib_dma_map_single(cb->pd->device,
+	cb->recv_dma_addr = ib_dma_map_single(cb->ib_dev,
 				   &cb->recv_buf, 
 				   sizeof(cb->recv_buf), DMA_BIDIRECTIONAL);
 	dma_unmap_addr_set(cb, recv_mapping, cb->recv_dma_addr);
-	cb->send_dma_addr = ib_dma_map_single(cb->pd->device,
+	cb->send_dma_addr = ib_dma_map_single(cb->ib_dev,
 					   &cb->send_buf, sizeof(cb->send_buf),
 					   DMA_BIDIRECTIONAL);
 	dma_unmap_addr_set(cb, send_mapping, cb->send_dma_addr);
 
 	cb->rdma_buf = kzalloc(cb->size, GFP_KERNEL);
 	if (cb->rdma_buf)
-		cb->rdma_dma_addr = ib_dma_map_single(cb->pd->device, cb->rdma_buf, cb->size, DMA_BIDIRECTIONAL);
-	if (!cb->rdma_buf || ib_dma_mapping_error(cb->pd->device, cb->rdma_dma_addr)) {
+		cb->rdma_dma_addr = ib_dma_map_single(cb->ib_dev, cb->rdma_buf, cb->size, DMA_BIDIRECTIONAL);
+	if (!cb->rdma_buf || ib_dma_mapping_error(cb->ib_dev, cb->rdma_dma_addr)) {
 		DEBUG_LOG(PFX "rdma_buf allocation failed\n");
 		kfree(cb->rdma_buf);
 		ret = -ENOMEM;
@@ -312,8 +312,8 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 	if (!cb->server) {
 		cb->start_buf = kzalloc(cb->size, GFP_KERNEL);
 		if (cb->start_buf)
-			cb->start_dma_addr = ib_dma_map_single(cb->pd->device, cb->start_buf, cb->size, DMA_BIDIRECTIONAL);
-		if (!cb->start_buf || ib_dma_mapping_error(cb->pd->device, cb->start_dma_addr)) {
+			cb->start_dma_addr = ib_dma_map_single(cb->ib_dev, cb->start_buf, cb->size, DMA_BIDIRECTIONAL);
+		if (!cb->start_buf || ib_dma_mapping_error(cb->ib_dev, cb->start_dma_addr)) {
 			DEBUG_LOG(PFX "start_buf malloc failed\n");
 			kfree(cb->start_buf);
 			ret = -ENOMEM;
@@ -333,12 +333,12 @@ bail:
 	if (cb->dma_mr && !IS_ERR(cb->dma_mr))
 		ib_dereg_mr(cb->dma_mr);
 	if (cb->rdma_buf) {
-		ib_dma_unmap_single(cb->pd->device, cb->rdma_dma_addr, cb->size,
+		ib_dma_unmap_single(cb->ib_dev, cb->rdma_dma_addr, cb->size,
 				    DMA_BIDIRECTIONAL);
 		kfree(cb->rdma_buf);
 	}
 	if (cb->start_buf) {
-		ib_dma_unmap_single(cb->pd->device, cb->start_dma_addr, cb->size,
+		ib_dma_unmap_single(cb->ib_dev, cb->start_dma_addr, cb->size,
 				    DMA_BIDIRECTIONAL);
 		kfree(cb->start_buf);
 	}
@@ -358,19 +358,19 @@ static void krperf_free_buffers(struct krperf_cb *cb)
 	if (cb->reg_mr)
 		ib_dereg_mr(cb->reg_mr);
 
-	ib_dma_unmap_single(cb->pd->device,
+	ib_dma_unmap_single(cb->ib_dev,
 			 dma_unmap_addr(cb, recv_mapping),
 			 sizeof(cb->recv_buf), DMA_BIDIRECTIONAL);
-	ib_dma_unmap_single(cb->pd->device,
+	ib_dma_unmap_single(cb->ib_dev,
 			 dma_unmap_addr(cb, send_mapping),
 			 sizeof(cb->send_buf), DMA_BIDIRECTIONAL);
 
-	ib_dma_unmap_single(cb->pd->device, dma_unmap_addr(cb, rdma_dma_addr),
+	ib_dma_unmap_single(cb->ib_dev, dma_unmap_addr(cb, rdma_dma_addr),
 			    cb->size, DMA_BIDIRECTIONAL);
 	kfree(cb->rdma_buf);
 
 	if (cb->start_buf) {
-		ib_dma_unmap_single(cb->pd->device, dma_unmap_addr(cb, start_dma_addr),
+		ib_dma_unmap_single(cb->ib_dev, dma_unmap_addr(cb, start_dma_addr),
 				    cb->size, DMA_BIDIRECTIONAL);
 		kfree(cb->start_buf);
 	}
@@ -432,6 +432,8 @@ static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 		return PTR_ERR(cb->pd);
 	}
 	DEBUG_LOG("created pd %p\n", cb->pd);
+
+	cb->ib_dev = cb->pd->device;
 
 	attr.cqe = cb->txdepth * 2;
 	attr.comp_vector = 0;

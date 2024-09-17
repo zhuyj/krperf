@@ -83,6 +83,9 @@ struct krperf_cb {
 	struct ib_pd *pd;
 	struct ib_qp *qp;
 
+	/* Normally ib_dev can be got from pd or cm_id */
+	struct ib_device *ib_dev;
+
 	struct ib_mr *dma_mr;
 
 	struct ib_fast_reg_page_list *page_list;

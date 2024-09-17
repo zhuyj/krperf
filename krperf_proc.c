@@ -69,7 +69,7 @@ static int krperf_read_proc(struct seq_file *seq, void *v)
 		if (cb->pd) {
 			seq_printf(seq,
 			     "%d-%s %lld %lld %lld %lld %lld %lld %lld %lld\n",
-			     num++, cb->pd->device->name, cb->stats.send_bytes,
+			     num++, cb->ib_dev->name, cb->stats.send_bytes,
 			     cb->stats.send_msgs, cb->stats.recv_bytes,
 			     cb->stats.recv_msgs, cb->stats.write_bytes,
 			     cb->stats.write_msgs,

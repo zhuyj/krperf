@@ -58,9 +58,9 @@ int krperf_alloc_srq(struct krperf_cb *cb)
 	struct ib_srq_init_attr srq_attr = {
 		.event_handler = krperf_srq_event,
 		.srq_context = (void *)cb,
-		.attr.max_wr = cb->pd->device->attrs.max_srq_wr,
-		.attr.max_sge = cb->pd->device->attrs.max_srq_sge,
-		.attr.srq_limit = cb->pd->device->attrs.max_srq_sge / 3,
+		.attr.max_wr = cb->ib_dev->attrs.max_srq_wr,
+		.attr.max_sge = cb->ib_dev->attrs.max_srq_sge,
+		.attr.srq_limit = cb->ib_dev->attrs.max_srq_sge / 3,
 		.srq_type = IB_SRQT_BASIC,
 	};
 
@@ -70,11 +70,11 @@ int krperf_alloc_srq(struct krperf_cb *cb)
 	pr_info_once("SRQ in krperf is in experimental stage\n");
 
 	if (cb->srq) {
-		pr_warn("ib dev %s srq\n", cb->pd->device->name);
+		pr_warn("ib dev %s srq\n", cb->ib_dev->name);
 		return 0;
 	}
 
-	pr_warn("ib dev %s create srq\n", cb->pd->device->name);
+	pr_warn("ib dev %s create srq\n", cb->ib_dev->name);
 
 	if (!cb->pd) {
 		pr_warn("srq, pd NULL\n");
