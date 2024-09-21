@@ -130,6 +130,7 @@ static void krperf_cq_comp_handler(struct ib_cq *cq, void *ctx)
 
 static void krperf_cq_comp_work(struct work_struct *work)
 {
+	int ncomplete = 0;
 	struct ib_wc wc;
 	const struct ib_recv_wr *bad_wr;
 	int ret;
@@ -199,11 +200,16 @@ static void krperf_cq_comp_work(struct work_struct *work)
 			       __func__, __LINE__, wc.opcode);
 			goto error;
 		}
+		ncomplete += ret;
 	}
 	if (ret) {
 		pr_err("poll error %d(%pe)\n", ret, ERR_PTR(ret));
 		goto error;
 	}
+
+	if (cb->cq->dim)
+		rdma_dim(cb->cq->dim, ncomplete);
+
 	return;
 error:
 	cb->state = KRPERF_ERROR;
@@ -443,6 +449,7 @@ static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 
 	attr.cqe = cb->txdepth * 2;
 	attr.comp_vector = 0;
+	attr.flags |= IB_CQ_MODERATE;
 	cb->cq = ib_create_cq(cm_id->device, krperf_cq_comp_handler, NULL,
 			      cb, &attr);
 	if (IS_ERR(cb->cq)) {
@@ -628,6 +635,7 @@ static void flush_qp(struct krperf_cb *cb)
 	const struct ib_send_wr *bad;
 	struct ib_recv_wr recv_wr = { 0 };
 	const struct ib_recv_wr *recv_bad;
+	int ncomplete = 0;
 	struct ib_wc wc;
 	int ret;
 	int flushed = 0;
@@ -664,8 +672,11 @@ static void flush_qp(struct krperf_cb *cb)
 		if (wc.wr_id == 0xdeadbeefcafebabe ||
 		    wc.wr_id == 0xcafebabedeadbeef)
 			flushed++;
+		ncomplete += ret;
 	} while (flushed != 2);
 	DEBUG_LOG("qp_flushed! ccnt %u\n", ccnt);
+	if (cb->cq->dim)
+		rdma_dim(cb->cq->dim, ncomplete);
 }
 
 static unsigned long krperf_get_seconds(void)
@@ -691,6 +702,7 @@ static void krperf_fr_test(struct krperf_cb *cb)
 	int count = 0;
 	int scnt = 0;
 	struct scatterlist sg = {0};
+	int ncomplete = 0;
 	enum ib_mr_type mr_type;
 
 	if (cb->ib_dev->attrs.kernel_cap_flags & IBK_SG_GAPS_REG)
@@ -771,7 +783,12 @@ static void krperf_fr_test(struct krperf_cb *cb)
 			count++;
 			scnt--;
 		}
+		ncomplete += ret;
 	}
+
+	if (cb->cq->dim)
+		rdma_dim(cb->cq->dim, ncomplete);
+
 err2:
 	flush_qp(cb);
 	DEBUG_LOG("fr_test: done!\n");
