@@ -155,6 +155,10 @@ struct krperf_cb {
 	/* SRQ stuff */
 	bool 				use_srq;
 	struct ib_srq			*srq;
+
+	/* cq stuff, Add ib_cq_pool_get/ib_cq_pool_put */
+	unsigned int	cq_size;
+	struct ib_cqe   wr_cqe;
 };
 
 int krperf_doit(char *cmd);

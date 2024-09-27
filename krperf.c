@@ -112,6 +112,78 @@ static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
 	return 0;
 }
 
+static void krperf_cq_comp_done(struct ib_cq *cq, struct ib_wc *wc)
+{
+	const struct ib_recv_wr *bad_wr;
+	int ret;
+	struct krperf_cb *cb = wc->qp->qp_context;
+
+	if (wc->status) {
+		if (wc->status == IB_WC_WR_FLUSH_ERR) {
+			DEBUG_LOG("cq flushed\n");
+			goto error;
+		} else {
+			pr_err("cq completion failed with "
+			       "wr_id %Lx status: %s opcode %d vender_err %x\n",
+				wc->wr_id, ib_wc_status_msg(wc->status), wc->opcode, wc->vendor_err);
+			goto error;
+		}
+	}
+
+	switch (wc->opcode) {
+	case IB_WC_SEND:
+		DEBUG_LOG("send completion\n");
+		cb->stats.send_bytes += cb->send_sgl.length;
+		cb->stats.send_msgs++;
+		break;
+
+	case IB_WC_RDMA_WRITE:
+		DEBUG_LOG("rdma write completion\n");
+		cb->stats.write_bytes += cb->rdma_sq_wr.wr.sg_list->length;
+		cb->stats.write_msgs++;
+		cb->state = RDMA_WRITE_COMPLETE;
+		wake_up_interruptible(&cb->sem);
+		break;
+
+	case IB_WC_RDMA_READ:
+		DEBUG_LOG("rdma read completion\n");
+		cb->stats.read_bytes += cb->rdma_sq_wr.wr.sg_list->length;
+		cb->stats.read_msgs++;
+		cb->state = RDMA_READ_COMPLETE;
+		wake_up_interruptible(&cb->sem);
+		break;
+
+	case IB_WC_RECV:
+		DEBUG_LOG("recv completion\n");
+		cb->stats.recv_bytes += sizeof(cb->recv_buf);
+		cb->stats.recv_msgs++;
+		ret = cb->server ? krperf_server_recv(cb, wc) :
+					   krperf_client_recv(cb, wc);
+		if (ret) {
+			pr_err("recv wc error: %d(%pe)\n", ret, ERR_PTR(ret));
+			goto error;
+		}
+
+		ret = krperf_ib_srq_rq_post_recv(cb, &bad_wr);
+		if (ret) {
+			pr_err("post recv error: %d(%pe)\n", ret, ERR_PTR(ret));
+			goto error;
+		}
+		wake_up_interruptible(&cb->sem);
+		break;
+
+	default:
+		pr_err("%s:%d Unexpected opcode %d, Shutting down\n",
+		       __func__, __LINE__, wc->opcode);
+		goto error;
+	}
+
+	return;
+error:
+	cb->state = KRPERF_ERROR;
+	wake_up_interruptible(&cb->sem);
+}
+
 static void krperf_cq_comp_handler(struct ib_cq *cq, void *ctx)
 {
 	struct krperf_cb *cb = ctx;
@@ -244,6 +316,11 @@ static void krperf_setup_wr(struct krperf_cb *cb)
 	cb->rq_wr.sg_list = &cb->recv_sgl;
 	cb->rq_wr.num_sge = 1;
 
+	if (!cb->use_srq) {
+		cb->wr_cqe.done = krperf_cq_comp_done;
+		cb->rq_wr.wr_cqe = &cb->wr_cqe;
+	}
+
 	cb->send_sgl.addr = cb->send_dma_addr;
 	cb->send_sgl.length = sizeof cb->send_buf;
 	cb->send_sgl.lkey = cb->pd->local_dma_lkey;
@@ -253,11 +330,20 @@ static void krperf_setup_wr(struct krperf_cb *cb)
 	cb->sq_wr.sg_list = &cb->send_sgl;
 	cb->sq_wr.num_sge = 1;
 
+	if (!cb->use_srq) {
+		cb->wr_cqe.done = krperf_cq_comp_done;
+		cb->sq_wr.wr_cqe = &cb->wr_cqe;
+	}
+
 	if (cb->server) {
 		cb->rdma_sgl.addr = cb->rdma_dma_addr;
 		cb->rdma_sq_wr.wr.send_flags = IB_SEND_SIGNALED;
 		cb->rdma_sq_wr.wr.sg_list = &cb->rdma_sgl;
 		cb->rdma_sq_wr.wr.num_sge = 1;
+		if (!cb->use_srq) {
+			cb->wr_cqe.done = krperf_cq_comp_done;
+			cb->rdma_sq_wr.wr.wr_cqe = &cb->wr_cqe;
+		}
 	}
 
 	/* 
@@ -270,6 +356,11 @@ static void krperf_setup_wr(struct krperf_cb *cb)
 
 	cb->invalidate_wr.next = &cb->reg_mr_wr.wr;
 	cb->invalidate_wr.opcode = IB_WR_LOCAL_INV;
+
+	if (!cb->use_srq) {
+		cb->wr_cqe.done = krperf_cq_comp_done;
+		cb->invalidate_wr.wr_cqe = &cb->wr_cqe;
+	}
 }
 
 static int krperf_setup_buffers(struct krperf_cb *cb)
@@ -395,6 +486,11 @@ static int krperf_create_qp(struct krperf_cb *cb)
 	init_attr.cap.max_send_wr++;
 	init_attr.cap.max_recv_wr++;
 
+	/* For cq pool APIs ib_cq_pool_get/put */
+	if (!cb->use_srq) {
+		init_attr.qp_context = cb;
+	}
+
 	init_attr.cap.max_recv_sge = 1;
 	init_attr.cap.max_send_sge = 1;
 	init_attr.qp_type = IB_QPT_RC;
@@ -419,18 +515,54 @@ static int krperf_create_qp(struct krperf_cb *cb)
 	return ret;
 }
 
+static int krperf_create_cq(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
+{
+	int ret = 0;
+
+	if (cb->use_srq) {
+		struct ib_cq_init_attr attr;
+
+		attr.cqe = cb->txdepth * 2;
+		attr.comp_vector = 0;
+
+		cb->cq_size = 0;
+		cb->cq = ib_create_cq(cm_id->device, krperf_cq_comp_handler, NULL,
+					  cb, &attr);
+		if (IS_ERR(cb->cq)) {
+			pr_err("ib_create_cq failed\n");
+			ret = PTR_ERR(cb->cq);
+		}
+	} else {
+		cb->cq_size = cb->txdepth + 2 + 2;
+		cb->cq = ib_cq_pool_get(cm_id->device, cb->cq_size, -1, IB_POLL_WORKQUEUE);
+		if (IS_ERR(cb->cq)) {
+			pr_err("ib_cq_pool_get failed\n");
+			ret = PTR_ERR(cb->cq);
+		}
+	}
+
+	return ret;
+}
+
+static void krperf_destroy_cq(struct krperf_cb *cb)
+{
+	if (cb->use_srq)
+		ib_destroy_cq(cb->cq);
+	else
+		ib_cq_pool_put(cb->cq, cb->cq_size);
+}
+
 static void krperf_free_qp(struct krperf_cb *cb)
 {
 	ib_destroy_qp(cb->qp);
 	krperf_free_srq(cb);
-	ib_destroy_cq(cb->cq);
+	krperf_destroy_cq(cb);
 	ib_dealloc_pd(cb->pd);
 }
 
 static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 {
 	int ret;
-	struct ib_cq_init_attr attr = {0};
 
 	cb->pd = ib_alloc_pd(cm_id->device, 0);
 	if (IS_ERR(cb->pd)) {
@@ -441,15 +573,12 @@ static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 
 	cb->ib_dev = cb->pd->device;
 
-	attr.cqe = cb->txdepth * 2;
-	attr.comp_vector = 0;
-	cb->cq = ib_create_cq(cm_id->device, krperf_cq_comp_handler, NULL,
-			      cb, &attr);
-	if (IS_ERR(cb->cq)) {
-		pr_err("ib_create_cq failed\n");
-		ret = PTR_ERR(cb->cq);
+	ret = krperf_create_cq(cb, cm_id);
+	if (ret) {
+		pr_err("krperf_create_cq failed\n");
 		goto err1;
 	}
+
 	DEBUG_LOG("created cq %p\n", cb->cq);
 
 	if (!cb->frtest) {
@@ -476,7 +605,7 @@ static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 err3:
 	krperf_free_srq(cb);
 err2:
-	ib_destroy_cq(cb->cq);
+	krperf_destroy_cq(cb);
 err1:
 	ib_dealloc_pd(cb->pd);
 	return ret;
@@ -638,6 +767,8 @@ static void flush_qp(struct krperf_cb *cb)
 
 	wr.opcode = IB_WR_SEND;
 	wr.wr_id = 0xdeadbeefcafebabe;
+	if (!cb->use_srq)
+		wr.wr_cqe->done = krperf_cq_comp_done;
 	ret = ib_post_send(cb->qp, &wr, &bad);
 	if (ret) {
 		pr_err("%s post_send failed ret %d(%pe)\n", __func__, ret, ERR_PTR(ret));
