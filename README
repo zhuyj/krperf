@@ -60,7 +60,6 @@ Validate data in source and sink buffers
 
 <repeat the above loop>
 
-
 ============
 To build/install the krperf module
 ============
@@ -404,5 +403,13 @@ ib
 [29450.914914] cq flushed
 [29450.915115] krperf_free_buffers called on cb 00000000fd924db6
 [29450.915399] destroy cm_id 000000000c9829b2
+
+========
+Add self_test for krperf
+========
+
+sudo sh self_test.sh IP_ADDRESS_OF_RDMA_NIC
+
+Then run "dmesg" to check message.
 
 END-OF-FILE
