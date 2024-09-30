@@ -150,7 +150,6 @@ struct krperf_cb {
 					/* listener on server side. */
 	struct rdma_cm_id *child_cm_id;	/* connection on server side */
 	struct list_head list;
-	struct work_struct		ib_cq_comp_work;
 
 	/* SRQ stuff */
 	bool 				use_srq;
