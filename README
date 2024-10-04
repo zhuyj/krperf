@@ -412,4 +412,7 @@ sudo sh self_test.sh IP_ADDRESS_OF_RDMA_NIC
 
 Then run "dmesg" to check message.
 
+RXE test
+sudo sh self_test.sh rxe IP_ADDRESS_OF_NON_RDMA_NIC
+
 END-OF-FILE
