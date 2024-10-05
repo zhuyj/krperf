@@ -3,6 +3,8 @@
 
 #include "krperf_srv.h"
 
+#include "krperf_trace.h"
+
 extern int debug;
 #define DEBUG_LOG if (debug) printk
 
@@ -43,7 +45,7 @@ void krperf_test_server(struct krperf_cb *cb)
 			break;
 		}
 
-		DEBUG_LOG("server received sink adv\n");
+		T_trace_krperf_debug("server received sink adv\n");
 
 		cb->rdma_sq_wr.rkey = cb->remote_rkey;
 		cb->rdma_sq_wr.remote_addr = cb->remote_addr;
@@ -75,7 +77,7 @@ void krperf_test_server(struct krperf_cb *cb)
 		}
 		cb->rdma_sq_wr.wr.next = NULL;
 
-		DEBUG_LOG("server posted rdma read req \n");
+		T_trace_krperf_debug("server posted rdma read req\n");
 
 		/* Wait for read completion */
 		wait_event_interruptible(cb->sem, cb->state >= RDMA_READ_COMPLETE);
@@ -84,7 +86,7 @@ void krperf_test_server(struct krperf_cb *cb)
 				   cb->state);
 			break;
 		}
-		DEBUG_LOG("server received read complete\n");
+		T_trace_krperf_debug("server received read complete\n");
 
 		/* Display data in recv buf */
 		if (cb->verbose)
@@ -103,7 +105,7 @@ void krperf_test_server(struct krperf_cb *cb)
 			pr_err("post send error %d(%pe)\n", ret, ERR_PTR(ret));
 			break;
 		}
-		DEBUG_LOG("server posted go ahead\n");
+		T_trace_krperf_debug("server posted go ahead\n");
 
 		/* Wait for client's RDMA STAG/TO/Len */
 		wait_event_interruptible(cb->sem, cb->state >= RDMA_WRITE_ADV);
@@ -112,7 +114,7 @@ void krperf_test_server(struct krperf_cb *cb)
 				   cb->state);
 			break;
 		}
-		DEBUG_LOG("server received sink adv\n");
+		T_trace_krperf_debug("server received sink adv\n");
 
 		/* RDMA Write echo data */
 		cb->rdma_sq_wr.wr.opcode = IB_WR_RDMA_WRITE;
@@ -142,7 +144,7 @@ void krperf_test_server(struct krperf_cb *cb)
 				   cb->state);
 			break;
 		}
-		DEBUG_LOG("server rdma write complete \n");
+		T_trace_krperf_debug("server rdma write complete\n");
 
 		cb->state = KRPERF_CONNECTED;
 
@@ -157,7 +159,7 @@ void krperf_test_server(struct krperf_cb *cb)
 			pr_err("post send error %d(%pe)\n", ret, ERR_PTR(ret));
 			break;
 		}
-		DEBUG_LOG("server posted go ahead\n");
+		T_trace_krperf_debug("server posted go ahead\n");
 	}
 }
 
@@ -173,9 +175,9 @@ int krperf_bind_server(struct krperf_cb *cb)
 		pr_err("rdma_bind_addr error %d(%pe)\n", ret, ERR_PTR(ret));
 		return ret;
 	}
-	DEBUG_LOG("rdma_bind_addr successful\n");
+	T_trace_krperf_debug("rdma_bind_addr successful\n");
 
-	DEBUG_LOG("rdma_listen\n");
+	T_trace_krperf_debug("rdma_listen\n");
 	ret = rdma_listen(cb->cm_id, 3);
 	if (ret) {
 		pr_err("rdma_listen failed: %d(%pe)\n", ret, ERR_PTR(ret));

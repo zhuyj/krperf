@@ -23,6 +23,9 @@
 #include "krperf_srv.h"
 #include "krperf_clt.h"
 
+#define CREATE_TRACE_POINTS
+#include "krperf_trace.h"
+
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME " L" __stringify(__LINE__) ": file: %s +%d caller: %ps " fmt, __FILE__, __LINE__, __builtin_return_address(0)
 
@@ -74,7 +77,7 @@ static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
 		break;
 
 	case RDMA_CM_EVENT_ESTABLISHED:
-		DEBUG_LOG("ESTABLISHED\n");
+		T_trace_krperf_debug("ESTABLISHED\n");
 		if (!cb->server) {
 			cb->state = KRPERF_CONNECTED;
 		}
@@ -120,7 +123,7 @@ static void krperf_cq_comp_done(struct ib_cq *cq, struct ib_wc *wc)
 
 	if (wc->status) {
 		if (wc->status == IB_WC_WR_FLUSH_ERR) {
-			DEBUG_LOG("cq flushed\n");
+			T_trace_krperf_debug("cq flushed\n");
 			goto error;
 		} else {
 			pr_err("cq completion failed with "
@@ -132,13 +135,13 @@ static void krperf_cq_comp_done(struct ib_cq *cq, struct ib_wc *wc)
 
 	switch (wc->opcode) {
 	case IB_WC_SEND:
-		DEBUG_LOG("send completion\n");
+		T_trace_krperf_debug("send completion\n");
 		cb->stats.send_bytes += cb->send_sgl.length;
 		cb->stats.send_msgs++;
 		break;
 
 	case IB_WC_RDMA_WRITE:
-		DEBUG_LOG("rdma write completion\n");
+		T_trace_krperf_debug("rdma write completion\n");
 		cb->stats.write_bytes += cb->rdma_sq_wr.wr.sg_list->length;
 		cb->stats.write_msgs++;
 		cb->state = RDMA_WRITE_COMPLETE;
@@ -146,7 +149,7 @@ static void krperf_cq_comp_done(struct ib_cq *cq, struct ib_wc *wc)
 		break;
 
 	case IB_WC_RDMA_READ:
-		DEBUG_LOG("rdma read completion\n");
+		T_trace_krperf_debug("rdma read completion\n");
 		cb->stats.read_bytes += cb->rdma_sq_wr.wr.sg_list->length;
 		cb->stats.read_msgs++;
 		cb->state = RDMA_READ_COMPLETE;
@@ -154,7 +157,7 @@ static void krperf_cq_comp_done(struct ib_cq *cq, struct ib_wc *wc)
 		break;
 
 	case IB_WC_RECV:
-		DEBUG_LOG("recv completion\n");
+		T_trace_krperf_debug("recv completion\n");
 		cb->stats.recv_bytes += sizeof(cb->recv_buf);
 		cb->stats.recv_msgs++;
 		ret = cb->server ? krperf_server_recv(cb, wc) :
@@ -189,7 +192,7 @@ static int krperf_accept(struct krperf_cb *cb)
 	struct rdma_conn_param conn_param;
 	int ret;
 
-	DEBUG_LOG("accepting client connection request\n");
+	T_trace_krperf_debug("accepting client connection request\n");
 
 	memset(&conn_param, 0, sizeof conn_param);
 	conn_param.responder_resources = 1;
@@ -281,7 +284,7 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 	if (cb->rdma_buf)
 		cb->rdma_dma_addr = ib_dma_map_single(cb->ib_dev, cb->rdma_buf, cb->size, DMA_BIDIRECTIONAL);
 	if (!cb->rdma_buf || ib_dma_mapping_error(cb->ib_dev, cb->rdma_dma_addr)) {
-		DEBUG_LOG(PFX "rdma_buf allocation failed\n");
+		T_trace_krperf_debug("rdma_buf allocation failed\n");
 		kfree(cb->rdma_buf);
 		ret = -ENOMEM;
 		goto bail;
@@ -309,7 +312,7 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 		if (cb->start_buf)
 			cb->start_dma_addr = ib_dma_map_single(cb->ib_dev, cb->start_buf, cb->size, DMA_BIDIRECTIONAL);
 		if (!cb->start_buf || ib_dma_mapping_error(cb->ib_dev, cb->start_dma_addr)) {
-			DEBUG_LOG(PFX "start_buf malloc failed\n");
+			T_trace_krperf_debug("start_buf malloc failed\n");
 			kfree(cb->start_buf);
 			ret = -ENOMEM;
 			goto bail;
@@ -318,7 +321,7 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 	}
 
 	krperf_setup_wr(cb);
-	DEBUG_LOG(PFX "allocated & registered buffers...\n");
+	T_trace_krperf_debug("allocated & registered buffers...\n");
 	return 0;
 bail:
 	if (cb->reg_mr && !IS_ERR(cb->reg_mr))
@@ -641,7 +644,7 @@ static void flush_qp(struct krperf_cb *cb)
 	int ccnt = 0;
 
 	rdma_disconnect(cb->cm_id);
-	DEBUG_LOG("disconnected!\n");
+	T_trace_krperf_debug("disconnected!\n");
 
 	wr.opcode = IB_WR_SEND;
 	wr.wr_id = 0xdeadbeefcafebabe;
@@ -785,7 +788,7 @@ static void krperf_fr_test(struct krperf_cb *cb)
 	}
 err2:
 	flush_qp(cb);
-	DEBUG_LOG("fr_test: done!\n");
+	T_trace_krperf_debug("fr_test: done!\n");
 	ib_dereg_mr(mr);
 }
 
@@ -905,7 +908,7 @@ static int __init krperf_init(void)
 {
 	struct proc_dir_entry *krperf_proc = NULL;
 
-	DEBUG_LOG("krperf_init\n");
+	T_trace_krperf_debug("krperf_init\n");
 	krperf_proc = krperf_proc_create();
 	if (krperf_proc == NULL) {
 		pr_err("cannot create /proc/krperf\n");
@@ -916,7 +919,7 @@ static int __init krperf_init(void)
 
 static void __exit krperf_exit(void)
 {
-	DEBUG_LOG("krperf_exit\n");
+	T_trace_krperf_debug("krperf_exit\n");
 	remove_proc_entry("krperf", NULL);
 }
 

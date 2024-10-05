@@ -1,5 +1,7 @@
 #include "krperf_clt.h"
 
+#include "krperf_trace.h"
+
 extern int debug;
 #define DEBUG_LOG if (debug) printk
 
@@ -133,7 +135,7 @@ int krperf_connect_client(struct krperf_cb *cb)
 		return -1;
 	}
 
-	DEBUG_LOG("rdma_connect successful\n");
+	T_trace_krperf_debug("rdma_connect successful\n");
 	return 0;
 }
 
@@ -160,6 +162,6 @@ int krperf_bind_client(struct krperf_cb *cb)
 	if (!krperf_reg_supported(cb->cm_id->device))
 		return -EINVAL;
 
-	DEBUG_LOG("rdma_resolve_addr - rdma_resolve_route successful\n");
+	T_trace_krperf_debug("rdma_resolve_addr - rdma_resolve_route successful\n");
 	return 0;
 }
