@@ -96,7 +96,7 @@ static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
 		break;
 
 	case RDMA_CM_EVENT_DISCONNECTED:
-		printk(KERN_WARNING PFX "DISCONNECT EVENT...\n");
+		T_trace_krperf_debug("DISCONNECT EVENT...\n");
 		cb->state = KRPERF_ERROR;
 		wake_up_interruptible(&cb->sem);
 		break;

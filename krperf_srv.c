@@ -18,9 +18,8 @@ int krperf_server_recv(struct krperf_cb *cb, struct ib_wc *wc)
 	cb->remote_rkey = ntohl(cb->recv_buf.rkey);
 	cb->remote_addr = ntohll(cb->recv_buf.buf);
 	cb->remote_len  = ntohl(cb->recv_buf.size);
-	DEBUG_LOG("Received rkey %x addr %llx len %d from peer\n",
-		  cb->remote_rkey, (unsigned long long)cb->remote_addr,
-		  cb->remote_len);
+
+    T_trace_krperf_srv_recv(cb);
 
 	if (cb->state <= KRPERF_CONNECTED || cb->state == RDMA_WRITE_COMPLETE)
 		cb->state = RDMA_READ_ADV;
@@ -98,7 +97,7 @@ void krperf_test_server(struct krperf_cb *cb)
 		if (cb->server && cb->server_invalidate) {
 			cb->sq_wr.ex.invalidate_rkey = cb->remote_rkey;
 			cb->sq_wr.opcode = IB_WR_SEND_WITH_INV;
-			DEBUG_LOG("send-w-inv rkey 0x%x\n", cb->remote_rkey);
+            T_trace_krperf_remote_rkey(cb->remote_rkey);
 		}
 		ret = ib_post_send(cb->qp, &cb->sq_wr, &bad_wr);
 		if (ret) {
@@ -152,7 +151,7 @@ void krperf_test_server(struct krperf_cb *cb)
 		if (cb->server && cb->server_invalidate) {
 			cb->sq_wr.ex.invalidate_rkey = cb->remote_rkey;
 			cb->sq_wr.opcode = IB_WR_SEND_WITH_INV;
-			DEBUG_LOG("send-w-inv rkey 0x%x\n", cb->remote_rkey);
+            T_trace_krperf_remote_rkey(cb->remote_rkey);
 		}
 		ret = ib_post_send(cb->qp, &cb->sq_wr, &bad_wr);
 		if (ret) {
