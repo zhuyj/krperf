@@ -125,11 +125,7 @@ void krperf_test_server(struct krperf_cb *cb)
 		else
 			cb->rdma_sgl.lkey = krperf_rdma_rkey(cb, cb->rdma_dma_addr, 0);
 
-		DEBUG_LOG("rdma write from lkey %x laddr %llx len %d\n",
-				  cb->rdma_sq_wr.wr.sg_list->lkey,
-				  (unsigned long long)cb->rdma_sq_wr.wr.sg_list->addr,
-				  cb->rdma_sq_wr.wr.sg_list->length);
-
+        T_trace_krperf_lkey(cb);
 		ret = ib_post_send(cb->qp, &cb->rdma_sq_wr.wr, &bad_wr);
 		if (ret) {
 			pr_err("post send error %d(%pe)\n", ret, ERR_PTR(ret));
