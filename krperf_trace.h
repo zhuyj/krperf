@@ -102,6 +102,31 @@ TRACE_EVENT(krperf_lkey,
 
 #define T_trace_krperf_lkey(cb) trace_krperf_lkey(__FILE__, __func__, __LINE__, cb)
 
+TRACE_EVENT(krperf_format_send,
+    TP_PROTO(char *file, const char *func, int line, unsigned long long buf, unsigned int rkey, int size),
+    TP_ARGS(file, func, line, buf, rkey, size),
+    TP_STRUCT__entry(
+        __field(char *, file)
+        __field(const char *, func)
+        __field(int, line)
+        __field(unsigned long long, buf)
+        __field(unsigned int, rkey)
+        __field(int, size)
+    ),
+    TP_fast_assign(
+        __entry->file = file;
+        __entry->func = func;
+        __entry->line = line;
+        __entry->buf = buf;
+        __entry->rkey = rkey;
+        __entry->size = size;
+    ),
+
+    TP_printk("file: %s +%d func:%s: RDMA addr %llx rkey %x len %d\n", __entry->file, __entry->line, __entry->func, __entry->buf, __entry->rkey, __entry->size)
+);
+
+#define T_trace_krperf_format_send(buf, rkey, size) trace_krperf_format_send(__FILE__, __func__, __LINE__, buf, rkey, size)
+
 #endif /* _TRACE_KRPERF_H */
 
 #undef TRACE_INCLUDE_PATH

@@ -2,9 +2,6 @@
 
 #include "krperf_trace.h"
 
-extern int debug;
-#define DEBUG_LOG if (debug) printk
-
 int krperf_client_recv(struct krperf_cb *cb, struct ib_wc *wc)
 {
 	if (wc->byte_len != sizeof(cb->recv_buf)) {
@@ -35,8 +32,7 @@ static void krperf_format_send(struct krperf_cb *cb, u64 buf)
 		info->buf = htonll(buf);
 		info->rkey = htonl(rkey);
 		info->size = htonl(cb->size);
-		DEBUG_LOG("RDMA addr %llx rkey %x len %d\n",
-			  (unsigned long long)buf, rkey, cb->size);
+        T_trace_krperf_format_send((unsigned long long)buf, rkey, cb->size);
 	}
 }
 
