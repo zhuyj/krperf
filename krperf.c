@@ -51,9 +51,8 @@ static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
 	int ret;
 	struct krperf_cb *cb = cma_id->context;
 
-	DEBUG_LOG("cma_event type %d cma_id %p (%s)\n", event->event, cma_id,
-		  (cma_id == cb->cm_id) ? "parent" : "child");
-
+    TT_trace_krperf_debug("cma_event type %d cma_id %p (%s)\n", event->event, cma_id,
+          (cma_id == cb->cm_id) ? "parent" : "child");
 	switch (event->event) {
 	case RDMA_CM_EVENT_ADDR_RESOLVED:
 		cb->state = ADDR_RESOLVED;
@@ -72,7 +71,9 @@ static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
 	case RDMA_CM_EVENT_CONNECT_REQUEST:
 		cb->state = CONNECT_REQUEST;
 		cb->child_cm_id = cma_id;
-		DEBUG_LOG("child cma %p\n", cb->child_cm_id);
+
+        TT_trace_krperf_debug("child cma %p\n", cb->child_cm_id);
+
 		wake_up_interruptible(&cb->sem);
 		break;
 
@@ -269,7 +270,7 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 	enum ib_mr_type mr_type;
 	int ret;
 
-	DEBUG_LOG(PFX "krperf_setup_buffers called on cb %p\n", cb);
+    TT_trace_krperf_debug("krperf_setup_buffers called on cb %p\n", cb);
 
 	cb->recv_dma_addr = ib_dma_map_single(cb->ib_dev,
 				   &cb->recv_buf, 
@@ -301,10 +302,10 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 	cb->reg_mr = ib_alloc_mr(cb->pd,  mr_type, cb->page_list_len);
 	if (IS_ERR(cb->reg_mr)) {
 		ret = PTR_ERR(cb->reg_mr);
-		DEBUG_LOG(PFX "recv_buf reg_mr failed %d\n", ret);
+		TT_trace_krperf_debug("recv_buf reg_mr failed %d\n", ret);
 		goto bail;
 	}
-	DEBUG_LOG(PFX "reg rkey 0x%x page_list_len %u\n",
+	TT_trace_krperf_debug("reg rkey 0x%x page_list_len %u\n",
 		cb->reg_mr->rkey, cb->page_list_len);
 
 	if (!cb->server) {
@@ -345,7 +346,7 @@ bail:
 
 static void krperf_free_buffers(struct krperf_cb *cb)
 {
-	DEBUG_LOG("krperf_free_buffers called on cb %p\n", cb);
+	TT_trace_krperf_debug("krperf_free_buffers called on cb %p\n", cb);
 	
 	if (cb->dma_mr)
 		ib_dereg_mr(cb->dma_mr);
@@ -450,7 +451,7 @@ static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 		pr_err("ib_alloc_pd failed\n");
 		return PTR_ERR(cb->pd);
 	}
-	DEBUG_LOG("created pd %p\n", cb->pd);
+	TT_trace_krperf_debug("created pd %p\n", cb->pd);
 
 	cb->ib_dev = cb->pd->device;
 
@@ -460,7 +461,7 @@ static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 		goto err1;
 	}
 
-	DEBUG_LOG("created cq %p\n", cb->cq);
+	TT_trace_krperf_debug("created cq %p\n", cb->cq);
 
 	if (!cb->frtest) {
 		ret = ib_req_notify_cq(cb->cq, IB_CQ_NEXT_COMP);
@@ -481,7 +482,7 @@ static int krperf_setup_qp(struct krperf_cb *cb, struct rdma_cm_id *cm_id)
 		pr_err("krperf_create_qp failed: %d(%pe)\n", ret, ERR_PTR(ret));
 		goto err3;
 	}
-	DEBUG_LOG("created qp %p\n", cb->qp);
+	TT_trace_krperf_debug("created qp %p\n", cb->qp);
 	return 0;
 err3:
 	krperf_free_srq(cb);
@@ -526,7 +527,7 @@ u32 krperf_rdma_rkey(struct krperf_cb *cb, u64 buf, int post_inv)
 	ret = ib_map_mr_sg(cb->reg_mr, &sg, 1, NULL, PAGE_SIZE);
 	BUG_ON(ret <= 0 || ret > cb->page_list_len);
 
-	DEBUG_LOG(PFX "post_inv = %d, reg_mr new rkey 0x%x pgsz %u len %lu"
+	TT_trace_krperf_debug("post_inv = %d, reg_mr new rkey 0x%x pgsz %u len %lu"
 		" iova_start %llx\n",
 		post_inv,
 		cb->reg_mr_wr.key,
@@ -555,7 +556,7 @@ int krperf_reg_supported(struct ib_device *dev)
 			(unsigned long long)dev->attrs.device_cap_flags);
 		return 0;
 	}
-	DEBUG_LOG("Fastreg supported - device_cap_flags 0x%llx\n",
+	TT_trace_krperf_debug("Fastreg supported - device_cap_flags 0x%llx\n",
 		(unsigned long long)dev->attrs.device_cap_flags);
 	return 1;
 }
@@ -679,7 +680,7 @@ static void flush_qp(struct krperf_cb *cb)
 		    wc.wr_id == 0xcafebabedeadbeef)
 			flushed++;
 	} while (flushed != 2);
-	DEBUG_LOG("qp_flushed! ccnt %u\n", ccnt);
+	TT_trace_krperf_debug("qp_flushed! ccnt %u\n", ccnt);
 }
 
 static unsigned long krperf_get_seconds(void)
@@ -736,7 +737,7 @@ static void krperf_fr_test(struct krperf_cb *cb)
 	inv.opcode = IB_WR_LOCAL_INV;
 	inv.send_flags = IB_SEND_SIGNALED;
 	
-	DEBUG_LOG("fr_test: stag index 0x%x plen %u size %u depth %u\n", mr->rkey >> 8, plen, cb->size, cb->txdepth);
+	TT_trace_krperf_debug("fr_test: stag index 0x%x plen %u size %u depth %u\n", mr->rkey >> 8, plen, cb->size, cb->txdepth);
 	start = krperf_get_seconds();
 	while (!cb->count || count <= cb->count) {
 		if (signal_pending(current)) {
@@ -744,7 +745,7 @@ static void krperf_fr_test(struct krperf_cb *cb)
 			break;
 		}
 		if ((krperf_get_seconds() - start) >= 9) {
-			DEBUG_LOG("fr_test: pausing 1 second! count %u latest size %u plen %u\n", count, size, plen);
+			TT_trace_krperf_debug("fr_test: pausing 1 second! count %u latest size %u plen %u\n", count, size, plen);
 			wait_event_interruptible_timeout(cb->sem, cb->state == KRPERF_ERROR, HZ);
 			if (cb->state == KRPERF_ERROR)
 				break;
@@ -887,14 +888,14 @@ int krperf_doit(char *cmd)
 		pr_err("rdma_create_id error %d(%pe)\n", ret, ERR_PTR(ret));
 		goto out;
 	}
-	DEBUG_LOG("created cm_id %p\n", cb->cm_id);
+	TT_trace_krperf_debug("created cm_id %p\n", cb->cm_id);
 
 	if (cb->server)
 		krperf_run_server(cb);
 	else
 		krperf_run_client(cb);
 
-	DEBUG_LOG("destroy cm_id %p\n", cb->cm_id);
+	TT_trace_krperf_debug("destroy cm_id %p\n", cb->cm_id);
 	rdma_destroy_id(cb->cm_id);
 out:
 	mutex_lock(&krperf_mutex);

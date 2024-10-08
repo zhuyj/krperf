@@ -29,6 +29,13 @@ TRACE_EVENT(krperf_debug,
 
 #define T_trace_krperf_debug(s) trace_krperf_debug(__FILE__, __func__, __LINE__, s)
 
+#define TT_trace_krperf_debug(fmt, args...) do {\
+                    char *msg; \
+                    msg = kasprintf(GFP_KERNEL, fmt, ##args); \
+                    T_trace_krperf_debug(msg); \
+                    kfree(msg); \
+                    } while (false);
+
 TRACE_EVENT(krperf_srv_recv,
     TP_PROTO(char *file, const char *func, int line, struct krperf_cb *cb),
     TP_ARGS(file, func, line, cb),
