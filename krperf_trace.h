@@ -14,13 +14,14 @@ TRACE_EVENT(krperf_debug,
         __field(char *, file)
         __field(const char *, func)
         __field(int, line)
-        __field(char *, msg)
+        __array(char, msg, 1024)
     ),
     TP_fast_assign(
         __entry->file = file;
         __entry->func = func;
         __entry->line = line;
-        __entry->msg = msg;
+        memset(__entry->msg, 0, 1024);
+        memcpy(__entry->msg, msg, strlen(msg));
     ),
 
     TP_printk("file: %s +%d func:%s: %s", __entry->file, __entry->line, __entry->func, __entry->msg)
