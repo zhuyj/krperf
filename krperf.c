@@ -36,11 +36,6 @@ DEFINE_MUTEX(krperf_mutex);
  */
 LIST_HEAD(krperf_cbs);
 
-int debug = 0;
-module_param(debug, int, 0);
-MODULE_PARM_DESC(debug, "Debug level (0=none, 1=all)");
-#define DEBUG_LOG if (debug) printk
-
 MODULE_AUTHOR("Yanjun.Zhu");
 MODULE_DESCRIPTION("RDMA perf/ping client/server");
 MODULE_LICENSE("Dual BSD/GPL");
