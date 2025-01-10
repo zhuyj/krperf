@@ -7,12 +7,12 @@ CFLAGS_krperf.o = -I$(src)
 CFLAGS_krperf_srv.o = -I$(src)
 CFLAGS_krperf_clt.o = -I$(src)
 
-rdma_krperf-y			:= krperf_getopt.o \
-							krperf.o \
-							krperf_srq.o \
-							krperf_proc.o \
-							krperf_srv.o \
-							krperf_clt.o
+rdma_krperf-y	:= krperf_getopt.o \
+			krperf.o \
+			krperf_srq.o \
+			krperf_proc.o \
+			krperf_srv.o \
+			krperf_clt.o
 
 default:
 	make -C $(KSRC) M=`pwd` modules

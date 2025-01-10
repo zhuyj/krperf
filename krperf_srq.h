@@ -9,9 +9,9 @@ int krperf_ib_srq_rq_post_recv(struct krperf_cb *cb, const struct ib_recv_wr **b
 
 static __always_inline bool krperf_srq_valid(struct krperf_cb *cb)
 {
-        if (cb != NULL && cb->use_srq && cb->srq != NULL)
-                return true;
+	if (cb != NULL && cb->use_srq && cb->srq != NULL)
+		return true;
 
-        return false;
+	return false;
 }
 #endif /* _KRPERF_SRQ_H */

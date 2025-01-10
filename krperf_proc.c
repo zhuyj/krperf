@@ -19,7 +19,7 @@ extern struct list_head krperf_cbs;
  * Write proc is used to start a ping client or server.
  */
 static ssize_t krperf_write_proc(struct file * file, const char __user * buffer,
-								 size_t count, loff_t *ppos)
+				 size_t count, loff_t *ppos)
 {
 	char *cmd;
 	int rc;

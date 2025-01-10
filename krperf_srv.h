@@ -7,4 +7,3 @@ void krperf_test_server(struct krperf_cb *cb);
 int krperf_bind_server(struct krperf_cb *cb);
 
 #endif /* _KRPERF_SRV_H */
-

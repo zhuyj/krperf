@@ -32,7 +32,7 @@ static void krperf_format_send(struct krperf_cb *cb, u64 buf)
 		info->buf = htonll(buf);
 		info->rkey = htonl(rkey);
 		info->size = htonl(cb->size);
-        T_trace_krperf_format_send((unsigned long long)buf, rkey, cb->size);
+		T_trace_krperf_format_send((unsigned long long)buf, rkey, cb->size);
 	}
 }
 

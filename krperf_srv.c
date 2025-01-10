@@ -16,7 +16,7 @@ int krperf_server_recv(struct krperf_cb *cb, struct ib_wc *wc)
 	cb->remote_addr = ntohll(cb->recv_buf.buf);
 	cb->remote_len  = ntohl(cb->recv_buf.size);
 
-    T_trace_krperf_srv_recv(cb);
+	T_trace_krperf_srv_recv(cb);
 
 	if (cb->state <= KRPERF_CONNECTED || cb->state == RDMA_WRITE_COMPLETE)
 		cb->state = RDMA_READ_ADV;
@@ -94,7 +94,7 @@ void krperf_test_server(struct krperf_cb *cb)
 		if (cb->server && cb->server_invalidate) {
 			cb->sq_wr.ex.invalidate_rkey = cb->remote_rkey;
 			cb->sq_wr.opcode = IB_WR_SEND_WITH_INV;
-            T_trace_krperf_remote_rkey(cb->remote_rkey);
+			T_trace_krperf_remote_rkey(cb->remote_rkey);
 		}
 		ret = ib_post_send(cb->qp, &cb->sq_wr, &bad_wr);
 		if (ret) {
@@ -122,7 +122,7 @@ void krperf_test_server(struct krperf_cb *cb)
 		else
 			cb->rdma_sgl.lkey = krperf_rdma_rkey(cb, cb->rdma_dma_addr, 0);
 
-        T_trace_krperf_lkey(cb);
+		T_trace_krperf_lkey(cb);
 		ret = ib_post_send(cb->qp, &cb->rdma_sq_wr.wr, &bad_wr);
 		if (ret) {
 			pr_err("post send error %d(%pe)\n", ret, ERR_PTR(ret));
@@ -144,7 +144,7 @@ void krperf_test_server(struct krperf_cb *cb)
 		if (cb->server && cb->server_invalidate) {
 			cb->sq_wr.ex.invalidate_rkey = cb->remote_rkey;
 			cb->sq_wr.opcode = IB_WR_SEND_WITH_INV;
-            T_trace_krperf_remote_rkey(cb->remote_rkey);
+			T_trace_krperf_remote_rkey(cb->remote_rkey);
 		}
 		ret = ib_post_send(cb->qp, &cb->sq_wr, &bad_wr);
 		if (ret) {

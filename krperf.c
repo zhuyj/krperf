@@ -46,7 +46,7 @@ static int krperf_cma_event_handler(struct rdma_cm_id *cma_id,
 	int ret;
 	struct krperf_cb *cb = cma_id->context;
 
-    TT_trace_krperf_debug("cma_event type %d cma_id %p (%s)\n", event->event, cma_id,
+	TT_trace_krperf_debug("cma_event type %d cma_id %p (%s)\n", event->event, cma_id,
           (cma_id == cb->cm_id) ? "parent" : "child");
 	switch (event->event) {
 	case RDMA_CM_EVENT_ADDR_RESOLVED:
@@ -265,7 +265,7 @@ static int krperf_setup_buffers(struct krperf_cb *cb)
 	enum ib_mr_type mr_type;
 	int ret;
 
-    TT_trace_krperf_debug("krperf_setup_buffers called on cb %p\n", cb);
+	TT_trace_krperf_debug("krperf_setup_buffers called on cb %p\n", cb);
 
 	cb->recv_dma_addr = ib_dma_map_single(cb->ib_dev,
 				   &cb->recv_buf, 
