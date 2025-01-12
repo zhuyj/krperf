@@ -26,6 +26,8 @@
 #define CREATE_TRACE_POINTS
 #include "krperf_trace.h"
 
+#include "krperf_ebpf.h"
+
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME " L" __stringify(__LINE__) ": file: %s +%d caller: %ps " fmt, __FILE__, __LINE__, __builtin_return_address(0)
 
@@ -903,6 +905,7 @@ out:
 static int __init krperf_init(void)
 {
 	struct proc_dir_entry *krperf_proc = NULL;
+	int err;
 
 	T_trace_krperf_debug("krperf_init\n");
 	krperf_proc = krperf_proc_create();
@@ -910,6 +913,13 @@ static int __init krperf_init(void)
 		pr_err("cannot create /proc/krperf\n");
 		return -ENOMEM;
 	}
+
+	err = krperf_register_ebpf();
+	if (err) {
+		pr_err("failed to register ebpf");
+		return err;
+	}
+
 	return 0;
 }
 

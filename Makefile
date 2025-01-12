@@ -12,7 +12,8 @@ rdma_krperf-y	:= krperf_getopt.o \
 			krperf_srq.o \
 			krperf_proc.o \
 			krperf_srv.o \
-			krperf_clt.o
+			krperf_clt.o \
+			krperf_ebpf.o
 
 default:
 	make -C $(KSRC) M=`pwd` modules
