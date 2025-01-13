@@ -1,0 +1,13 @@
+CLANG ?= clang
+LLVM_STRIP ?= llvm-strip
+BPF_TARGET := bpf
+
+CFLAGS := -O2 -g -target $(BPF_TARGET) -Wall -Werror -I/usr/include -I/root/linux/tools/lib/
+
+all: krperf_ebpf_kern.o
+
+krperf_ebpf_kern.o: krperf_ebpf_kern.c
+	$(CLANG) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -f krperf_ebpf_kern.o

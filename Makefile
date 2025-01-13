@@ -29,3 +29,6 @@ clean:
 	rm -f Module.symvers
 	rm -f Module.markers
 	rm -f modules.order
+
+bpf:
+	make -f Makefile_ebpf
