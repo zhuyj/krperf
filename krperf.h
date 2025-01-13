@@ -71,8 +71,8 @@ struct krperf_rdma_info {
 /*
  * Default max buffer size for IO...
  */
-#define RPING_BUFSIZE 128*1024
-#define RPING_SQ_DEPTH 64
+#define RPERF_BUFSIZE 128*1024
+#define RPERF_SQ_DEPTH 64
 
 /*
  * Control block struct.

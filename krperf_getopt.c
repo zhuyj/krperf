@@ -132,9 +132,9 @@ int krperf_parse(char *cmd, struct krperf_cb *cb)
 			break;
 		case 'S':
 			cb->size = optint;
-			if ((cb->size < 1) || (cb->size > RPING_BUFSIZE)) {
+			if ((cb->size < 1) || (cb->size > RPERF_BUFSIZE)) {
 				pr_err("Invalid size %d (valid range is 1 to %d)\n",
-				       cb->size, RPING_BUFSIZE);
+				       cb->size, RPERF_BUFSIZE);
 				ret = EINVAL;
 			} else {
 				pr_info("size %d\n", (int)optint);

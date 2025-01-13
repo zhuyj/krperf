@@ -854,7 +854,7 @@ int krperf_doit(char *cmd)
 	cb->server = -1;
 	cb->state = IDLE;
 	cb->size = 64;
-	cb->txdepth = RPING_SQ_DEPTH;
+	cb->txdepth = RPERF_SQ_DEPTH;
 	init_waitqueue_head(&cb->sem);
 
 	ret = krperf_parse(cmd, cb);
